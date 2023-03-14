@@ -102,8 +102,17 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 		// Build and return a response with the provided image
 		File file = mmfg.getGeneralMetadata().getFileReference();
 		System.out.println("-> " + file.getAbsolutePath());
-		String type = new MimetypesFileTypeMap().getContentType(file);
-		return Response.ok().entity(file).type(type).build();
+		String type = "application/jpg";
+		try {
+			type = new MimetypesFileTypeMap().getContentType(file);
+		}
+		catch (Error ex) {
+			ex.printStackTrace();
+		}
+		System.out.println("--> " + type);
+		Response res = Response.ok().entity(file).type(type).build();
+		System.out.println("---> " + res.getHeaderString("contentType"));
+		return res;
 	}
 
 	/** returns image-URL as String **/
