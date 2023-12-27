@@ -20,6 +20,7 @@ import de.swa.gc.GraphCodeGenerator;
 import de.swa.gmaf.GMAF;
 import de.swa.mmfg.MMFG;
 import de.swa.ui.MMFGCollection;
+import de.swa.ui.MMFGCollectionFactory;
 
 /** implementation of the GMAF SOAP API **/
 @WebService(endpointInterface = "de.swa.gmaf.api.GMAF_Facade")
@@ -48,7 +49,7 @@ public class GMAF_Facade_SOAPImpl implements GMAF_Facade {
 	@WebMethod public String processAssetFromFile(String auth_token, File f) {
 		try {
 			MMFG mmfg = getSession(auth_token).processAsset(f);
-			MMFGCollection.getInstance(auth_token).addToCollection(mmfg);
+			MMFGCollectionFactory.createOrGetCollection(auth_token).addToCollection(mmfg);
 			return mmfg.getId().toString();
 		}
 		catch (Exception x) {
@@ -71,7 +72,7 @@ public class GMAF_Facade_SOAPImpl implements GMAF_Facade {
 			fout.close();
 			
 			MMFG mmfg = getSession(auth_token).processAsset(f);
-			MMFGCollection.getInstance(auth_token).addToCollection(mmfg);
+			MMFGCollectionFactory.createOrGetCollection(auth_token).addToCollection(mmfg);
 			return mmfg.getId().toString();
 		}
 		catch (Exception x) {
@@ -111,7 +112,7 @@ public class GMAF_Facade_SOAPImpl implements GMAF_Facade {
 	@Produces(MediaType.APPLICATION_JSON)
 	@WebMethod public Vector<String> getCollectionIDs(String auth_token) {
 		Vector<String> ids = new Vector<String>();
-		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
+		MMFGCollection coll = MMFGCollectionFactory.createOrGetCollection(auth_token);
 		for (MMFG m : coll.getCollection()) {
 			ids.add(m.getId().toString());
 		}
@@ -129,7 +130,7 @@ public class GMAF_Facade_SOAPImpl implements GMAF_Facade {
 	@GET
 	@Produces(MediaType.APPLICATION_JSON)
 	@WebMethod public GraphCode getOrGenerateGraphCode(String auth_token, String id) {
-		MMFG mmfg = MMFGCollection.getInstance(auth_token).getMMFGForId(UUID.fromString(id));
+		MMFG mmfg = MMFGCollectionFactory.createOrGetCollection(auth_token).getMMFGForId(UUID.fromString(id));
 		return GraphCodeGenerator.generate(mmfg);
 	}
 	
@@ -138,7 +139,7 @@ public class GMAF_Facade_SOAPImpl implements GMAF_Facade {
 	@Produces(MediaType.APPLICATION_JSON)
 	@WebMethod public Vector<String> getSimilarAssetIDsByGraphCode(String auth_token, GraphCode gc) {
 		Vector<String> ids = new Vector<String>();
-		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
+		MMFGCollection coll = MMFGCollectionFactory.createOrGetCollection(auth_token);
 		for (MMFG m : coll.getSimilarAssets(gc)) {
 			ids.add(m.getId().toString());
 		}
@@ -150,7 +151,7 @@ public class GMAF_Facade_SOAPImpl implements GMAF_Facade {
 	@Produces(MediaType.APPLICATION_JSON)
 	@WebMethod public Vector<String> getRecommendedAssetIDsByGraphCode(String auth_token, GraphCode gc) {
 		Vector<String> ids = new Vector<String>();
-		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
+		MMFGCollection coll = MMFGCollectionFactory.createOrGetCollection(auth_token);
 		for (MMFG m : coll.getRecommendedAssets(gc)) {
 			ids.add(m.getId().toString());
 		}
@@ -160,16 +161,16 @@ public class GMAF_Facade_SOAPImpl implements GMAF_Facade {
 	@GET
 	@Produces(MediaType.APPLICATION_JSON)
 	@WebMethod public Vector<String> getRecommendedAssetIDsForMMFGId(String auth_token, String id) {
-		MMFG mmfg = MMFGCollection.getInstance(auth_token).getMMFGForId(UUID.fromString(id));
-		GraphCode gc = MMFGCollection.getInstance(auth_token).getOrGenerateGraphCode(mmfg);
+		MMFG mmfg = MMFGCollectionFactory.createOrGetCollection(auth_token).getMMFGForId(UUID.fromString(id));
+		GraphCode gc = MMFGCollectionFactory.createOrGetCollection(auth_token).getOrGenerateGraphCode(mmfg);
 		return getRecommendedAssetIDsByGraphCode(auth_token, gc);
 	}
 	
 	@GET
 	@Produces(MediaType.APPLICATION_JSON)
 	@WebMethod public Vector<String> getSimilarAssetIDsForMMFGId(String auth_token, String id) {
-		MMFG mmfg = MMFGCollection.getInstance(auth_token).getMMFGForId(UUID.fromString(id));
-		GraphCode gc = MMFGCollection.getInstance(auth_token).getOrGenerateGraphCode(mmfg);
+		MMFG mmfg = MMFGCollectionFactory.createOrGetCollection(auth_token).getMMFGForId(UUID.fromString(id));
+		GraphCode gc = MMFGCollectionFactory.createOrGetCollection(auth_token).getOrGenerateGraphCode(mmfg);
 		return getSimilarAssetIDsByGraphCode(auth_token, gc);
 	}
 	
@@ -183,7 +184,7 @@ public class GMAF_Facade_SOAPImpl implements GMAF_Facade {
 	@GET
 	@Produces(MediaType.APPLICATION_JSON)
 	@WebMethod public MMFG getMMFG(String auth_token, String id) {
-		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
+		MMFGCollection coll = MMFGCollectionFactory.createOrGetCollection(auth_token);
 		MMFG m = coll.getMMFGForId(UUID.fromString(id));
 		return m;
 	}
@@ -192,7 +193,7 @@ public class GMAF_Facade_SOAPImpl implements GMAF_Facade {
 	@GET
 	@Produces(MediaType.APPLICATION_JSON)
 	@WebMethod public String getPreviewURL(String auth_token, String mmfg_id) {
-		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
+		MMFGCollection coll = MMFGCollectionFactory.createOrGetCollection(auth_token);
 		UUID id = UUID.fromString(mmfg_id);
 		MMFG mmfg = coll.getMMFGForId(id);
 		return mmfg.getGeneralMetadata().getPreviewUrl().toString();

@@ -2,11 +2,11 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>de.swa</groupId>
-	<artifactId>gmaf-api</artifactId>
+	<artifactId>gmaf-api-mvr</artifactId>
 	<version>1.0.1</version>
 	<packaging>jar</packaging>
 
-	<name>gmaf-api</name>
+	<name>gmaf-api-mvr</name>
 	<url>http://maven.apache.org</url>
 
 	<properties>
@@ -76,7 +76,7 @@
 
 		<dependency>
 			<groupId>de.swa</groupId>
-			<artifactId>gmaf</artifactId>
+			<artifactId>gmaf-mvr</artifactId>
 			<version>1.0.2</version>
 		</dependency>
 	</dependencies>
