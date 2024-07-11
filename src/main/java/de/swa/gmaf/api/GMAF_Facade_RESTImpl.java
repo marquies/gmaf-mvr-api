@@ -1,34 +1,54 @@
 package de.swa.gmaf.api;
 
+import com.google.gson.Gson;
 import de.swa.gc.GraphCode;
 import de.swa.gc.GraphCodeGenerator;
 import de.swa.gc.GraphCodeIO;
 import de.swa.gmaf.GMAF;
 import de.swa.mmfg.GeneralMetadata;
 import de.swa.mmfg.MMFG;
+import de.swa.ui.Configuration;
 import de.swa.ui.MMFGCollection;
-import de.swa.ui.MMFGCollectionFactory;
+import io.swagger.v3.jaxrs2.SwaggerSerializers;
+import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource;
+import org.apache.jena.query.*;
+import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.server.ResourceConfig;
-import software.amazon.awssdk.thirdparty.jackson.core.util.JacksonFeature;
+import org.glassfish.jersey.server.ServerProperties;
+//import software.amazon.awssdk.thirdparty.jackson.core.util.JacksonFeature;
 import javax.activation.MimetypesFileTypeMap;
 import javax.jws.WebMethod;
 import javax.ws.rs.*;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.UUID;
 import java.util.Vector;
 
-/** implementation of the GMAF REST API **/
+/**
+ * implementation of the GMAF REST API
+ **/
 @Path("/gmaf")
 public class GMAF_Facade_RESTImpl extends ResourceConfig {
 	public GMAF_Facade_RESTImpl() {
 		//	packages("de.swa.gmaf.api");
 		register(GMAF_Facade_RESTImpl.class);
 		register(JacksonFeature.class);
+		OpenApiResource openApiResource = new OpenApiResource();
+		register(openApiResource);
+
+
+		//register(ApiListingResource.class);
+		register(SwaggerSerializers.class);
+		//register("/swagger-ui/**");  //addResourceLocations("classpath:/META-INF/resources/webjars/swagger-ui/2.1.3/");
+
 	}
 
-	/** returns a new session token **/
+	/**
+	 * returns a new session token
+	 **/
 	@GET
 	@Path("/getToken/{api-key}")
 	public String getAuthToken(
@@ -40,13 +60,15 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 	}
 
 
-	/** returns a Graph Code for a given MMFG **/
+	/**
+	 * returns a Graph Code for a given MMFG
+	 **/
 	@POST
-    @Path("/getgc/{auth-token}/{mmfg_id}")
+	@Path("/getgc/{auth-token}/{mmfg_id}")
 	@Produces("application/json")
 	public String getOrGenerateGraphCode(@PathParam("auth-token") String auth_token, @PathParam("mmfg_id") String mmfg_id) {
 		System.out.println("getGc " + mmfg_id);
-		MMFGCollection coll = MMFGCollectionFactory.createOrGetCollection(auth_token);
+		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
 		UUID id = UUID.fromString(mmfg_id);
 		MMFG mmfg = coll.getMMFGForId(id);
 		GraphCode gc = GraphCodeGenerator.generate(mmfg);
@@ -54,17 +76,24 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 		System.out.println("-> " + json);
 		return json;
 	}
-	/** returns MMFG for id **/
+
+	/**
+	 * returns MMFG for id
+	 **/
 	@POST
 	@Path("/getmmfg/{auth-token}/{mmfg-id}")
-	@Produces("application/json")
-	public MMFG getMMFGForId(@PathParam("auth-token") String auth_token, @PathParam("mmfg-id") String mmfg_id) {
+	@Produces("application/json" + ";charset=utf-8")
+	public Response getMMFGForId(@PathParam("auth-token") String auth_token, @PathParam("mmfg-id") String mmfg_id) {
 		System.out.println("getMMFG " + mmfg_id);
-		MMFGCollection coll = MMFGCollectionFactory.createOrGetCollection(auth_token);
+		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
 		UUID id = UUID.fromString(mmfg_id);
 		MMFG m = coll.getMMFGForId(id);
+		if (m == null) {
+			System.out.println("-> not found");
+			return Response.status(Response.Status.NOT_FOUND).build();
+		}
 		System.out.println("-> " + m.getId() + " with " + m.getAllNodes().size() + " nodes");
-		return m;
+		return Response.ok(m).build();
 	}
 
 	// data structures to hold sessions
@@ -80,24 +109,28 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 		else throw new RuntimeException("no valid API key");
 	}
 
-	/** returns the collection of MMFGs for a given auth_token **/
+	/**
+	 * returns the collection of MMFGs for a given auth_token
+	 **/
 	@POST
 	@Path("/getCollection/{auth-token}")
 	@Produces("application/json")
 	@WebMethod
 	public Vector<MMFG> getCollection(@PathParam("auth-token") String auth_token) {
-		MMFGCollection coll = MMFGCollectionFactory.createOrGetCollection(auth_token);
+		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
 		return coll.getCollection();
 	}
 
-	/** returns an image with given id **/
+	/**
+	 * returns an image with given id
+	 **/
 	@GET
 	@Path("/preview/{auth-token}/{id}")
 	@Produces("image/*")
 	@WebMethod
 	public Response getImage(@PathParam("auth-token") String auth_token, @PathParam("id") String mmfg_id) {
 		System.out.println("preview " + mmfg_id);
-		MMFGCollection coll = MMFGCollectionFactory.createOrGetCollection(auth_token);
+		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
 		UUID id = UUID.fromString(mmfg_id);
 		MMFG mmfg = coll.getMMFGForId(id);
 		// Build and return a response with the provided image
@@ -106,8 +139,7 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 		String type = "application/jpg";
 		try {
 			type = new MimetypesFileTypeMap().getContentType(file);
-		}
-		catch (Error ex) {
+		} catch (Error ex) {
 			ex.printStackTrace();
 		}
 		System.out.println("--> " + type);
@@ -116,37 +148,45 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 		return res;
 	}
 
-	/** returns image-URL as String **/
+	/**
+	 * returns image-URL as String
+	 **/
 	@POST
 	@Path("/preview/{auth-token}/{id}")
 	@Produces("application/json")
 	@WebMethod
-	public String getPreviewURL(@PathParam("auth-token") String auth_token, @PathParam("id")String mmfg_id) {
-		MMFGCollection coll = MMFGCollectionFactory.createOrGetCollection(auth_token);
+	public String getPreviewURL(@PathParam("auth-token") String auth_token, @PathParam("id") String mmfg_id) {
+		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
 		UUID id = UUID.fromString(mmfg_id);
 		MMFG mmfg = coll.getMMFGForId(id);
 		return mmfg.getGeneralMetadata().getPreviewUrl().toString();
 	}
 
 
-	/** returns a list of similar assets for a given Graph Code **/
+	/**
+	 * returns a list of similar assets for a given Graph Code
+	 **/
 	@POST
-    @Path("/getSim/{auth-token}/{id}")
+	@Path("/getSim/{auth-token}/{id}")
 	@Produces("application/json")
-	@WebMethod public Vector<MMFG> getSimilarAssets(@PathParam("auth-token") String auth_token, @PathParam("id")String mmfg_id) {
-		MMFGCollection coll = MMFGCollectionFactory.createOrGetCollection(auth_token);
+	@WebMethod
+	public Vector<MMFG> getSimilarAssets(@PathParam("auth-token") String auth_token, @PathParam("id") String mmfg_id) {
+		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
 		UUID id = UUID.fromString(mmfg_id);
 		MMFG mmfg = coll.getMMFGForId(id);
 		GraphCode gc = GraphCodeGenerator.generate(mmfg);
 		return coll.getSimilarAssets(gc);
 	}
 
-	/** returns a list of recommendations for a given Graph Code **/
+	/**
+	 * returns a list of recommendations for a given Graph Code
+	 **/
 	@POST
 	@Path("/getRec/{auth-token}/{id}")
 	@Produces("application/json")
-	@WebMethod public Vector<MMFG> getRecommendedAssets(@PathParam("auth-token") String auth_token, @PathParam("id")String mmfg_id) {
-		MMFGCollection coll = MMFGCollectionFactory.createOrGetCollection(auth_token);
+	@WebMethod
+	public Vector<MMFG> getRecommendedAssets(@PathParam("auth-token") String auth_token, @PathParam("id") String mmfg_id) {
+		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
 		UUID id = UUID.fromString(mmfg_id);
 		MMFG mmfg = coll.getMMFGForId(id);
 		GraphCode gc = GraphCodeGenerator.generate(mmfg);
@@ -156,51 +196,51 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 	@POST
 	@Path("/query/{auth-token}/{query}")
 	@Produces("application/json")
-	@WebMethod public String[] queryByKeyword(@PathParam("auth-token") String auth_token, @PathParam("query") String keywords) {
+	@WebMethod
+	public String[] queryByKeyword(@PathParam("auth-token") String auth_token, @PathParam("query") String keywords) {
 		GraphCode gc = new GraphCode();
 		Vector<String> dict = new Vector<String>();
 		keywords = keywords.replace(";", ",");
-		keywords = keywords.replace(" ", ",");
+		//keywords = keywords.replace(" ", ",");
 		String[] str = keywords.split(",");
 		for (String s : str) dict.add(s.trim());
 		gc.setDictionary(dict);
-		
+
 		System.out.println("query by keyword " + keywords + " with token " + auth_token);
-		
-		Vector<String> ids = new Vector<String>();
-		MMFGCollection coll = MMFGCollectionFactory.createOrGetCollection(auth_token);
-		for (MMFG m : coll.getSimilarAssets(gc)) {
-			GeneralMetadata gm = m.getGeneralMetadata();
-			if (gm.getCameraModel() == null) {
-				System.out.println("MMFG (" + gm.getId() + "/" + gm.getFileName() + "), Similarity: " + m.getTempSimilarity()[0] + ", " + m.getTempSimilarity()[1] + ", " + m.getTempSimilarity()[2]);
-				ids.add(gm.getId() + "/" + gm.getFileName());
-			} else {
-				System.out.println("MMFG (" + gm.getId() + "/" + gm.getFileName() + "/" + gm.getCameraModel() + "), Similarity: " + m.getTempSimilarity()[0] + ", " + m.getTempSimilarity()[1] + ", " + m.getTempSimilarity()[2]);
-				ids.add(gm.getId() + "/" + gm.getFileName() + "/" + gm.getCameraModel() );
+
+		try {
+
+			Vector<String> ids = new Vector<String>();
+			MMFGCollection coll = MMFGCollection.getInstance(auth_token);
+			for (MMFG m : coll.getSimilarAssets(gc)) {
+				ids.add(m.getId().toString());
 			}
 
+			if (ids.size() == 0) {
+				Vector<MMFG> mmfgs = MMFGCollection.getInstance(auth_token).getCollection();
+				for (MMFG m : mmfgs) ids.add(m.getId().toString());
+			}
+
+			System.out.println("found " + ids.size() + " results");
+
+			String[] strx = new String[ids.size()];
+			for (int i = 0; i < strx.length; i++) {
+				String s = ids.get(i);
+				strx[i] = s;
+			}
+			return strx;
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
-		
-		if (ids.size() == 0) {
-			Vector<MMFG> mmfgs = MMFGCollectionFactory.createOrGetCollection(auth_token).getCollection();
-			for (MMFG m : mmfgs) ids.add(m.getId().toString());
-		}
-		
-		System.out.println("found " + ids.size() + " results");
-		
-		String[] strx = new String[ids.size()];
-		for (int i = 0; i < strx.length; i++) {
-			String s = ids.get(i);
-			strx[i] = s;
-		}
-		return strx;
+		return null;
 	}
-	
+
 	@POST
 	@Path("/get-collection-ids/{auth-token}")
 	@Produces("application/json")
-	@WebMethod public String[] getCollectionIds(@PathParam("auth-token") String auth_token) {
-		MMFGCollection coll = MMFGCollectionFactory.createOrGetCollection(auth_token);
+	@WebMethod
+	public String[] getCollectionIds(@PathParam("auth-token") String auth_token) {
+		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
 		Vector<MMFG> v = coll.getCollection();
 		String[] str = new String[v.size()];
 		for (int i = 0; i < v.size(); i++) {
@@ -209,12 +249,15 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 		return str;
 	}
 
-	/** returns Metadata for collection items **/
+	/**
+	 * returns Metadata for collection items
+	 **/
 	@POST
 	@Path("/getMetadata/{auth-token}")
 	@Produces("application/json")
-	@WebMethod public GeneralMetadata[] getCollectionMetadata(@PathParam("auth-token") String auth_token) {
-		MMFGCollection coll = MMFGCollectionFactory.createOrGetCollection(auth_token);
+	@WebMethod
+	public GeneralMetadata[] getCollectionMetadata(@PathParam("auth-token") String auth_token) {
+		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
 		Vector<MMFG> v = coll.getCollection();
 		GeneralMetadata[] str = new GeneralMetadata[v.size()];
 		for (int i = 0; i < v.size(); i++) {
@@ -223,7 +266,7 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 		return str;
 	}
 	/*
-	*//** processes an asset with the GMAF Core and returns the calculated MMFG **//*
+	 *//** processes an asset with the GMAF Core and returns the calculated MMFG **//*
 	public MMFG processAsset(String auth_token, @FormParam("file") File f) {
 		try {
 			return getSession(auth_token).processAsset(f);
@@ -272,13 +315,17 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 		return null;
 	}
 
-	*//** sets the classes of the processing plugins (optional) **//*
+	*/
+
+	/**
+	 * sets the classes of the processing plugins (optional)
+	 **//*
 	@WebMethod public void setProcessingPlugins(String auth_token, Vector<String> plugins) {
 		getSession(auth_token).setProcessingPlugins(plugins);
-	}
-
+	}                                                                      */
+	                                 /*
 	@POST
-	@Path("/{query-by-example}")
+	@Path("/query-by-example")
 	@Produces("application/json")
 	@WebMethod public String[] queryByExample(@PathParam("auth-token") String auth_token, @PathParam("mmfg-id") String mmfg_id) {
 		QueryByExampleCommand qbe = new QueryByExampleCommand(mmfg_id, auth_token);
@@ -302,4 +349,84 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 	@WebMethod public String getLastError(@PathParam("auth-token") String auth_token) {
 		return errorMessages.get(auth_token);
 	}*/
+	@POST
+	@Path("/test")
+	@Produces("application/json")
+	@WebMethod
+	public String getTest() {
+		System.out.println("Called Test, return stuff");
+		return "test";
+	}
+
+
+	@POST
+	@Path("/getsimilarassetsbygraphcode/{auth-token}")
+	@Produces("application/json")
+	@WebMethod
+	public Vector<String> getSimilarAssetIDsByGraphCode(@PathParam("auth-token") String auth_token, String x) {
+		Gson gson = new Gson();
+		GraphCode gc = gson.fromJson(x, GraphCode.class);
+
+		Vector<String> ids = new Vector<String>();
+		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
+		for (MMFG m : coll.getSimilarAssets(gc)) {
+			ids.add(m.getId().toString());
+		}
+		return ids;
+	}
+
+	@POST
+	@Path("/sparql/{auth-token}/")
+	@Consumes(MediaType.TEXT_PLAIN)
+	@Produces(MediaType.APPLICATION_JSON)
+	@WebMethod
+	public String[] queryBySparQL(@PathParam("auth-token") String auth_token, String query) {
+		Query q = QueryFactory.create(query);
+
+		QueryExecution qexec = QueryExecutionFactory.create(q, MMFGCollection.getInstance().getRDFModel());
+
+		ResultSet results = qexec.execSelect();
+		int colNum = results.getResultVars().size();
+		int rowNum = 0;
+		String[] header = new String[colNum];
+		results.getResultVars().toArray(header);
+		ArrayList<ArrayList> tempData = new ArrayList<ArrayList>();
+
+		for (; results.hasNext(); ) {
+			QuerySolution soln = results.nextSolution();
+			ArrayList row = new ArrayList();
+			for (int i = 0; i < colNum; i++) {
+				row.add(soln.get(header[i]));
+			}
+			tempData.add(row);
+			rowNum++;
+
+		}
+		Object[][] data = new Object[rowNum][colNum];
+
+		String[] str = new String[rowNum];
+		for (int i = 0; i < rowNum; i++) {
+			for (int j = 0; j < colNum; j++) {
+				//data[i][j] = tempData.get(i).get(j)
+				System.out.println(tempData.get(i).get(j));
+				String f = tempData.get(i).get(j).toString();
+				String[] xf = f.split("/");
+				String fname = xf[xf.length - 1];
+				System.out.println(fname);
+
+				File file = new File(Configuration.getInstance().getCollectionPaths().elementAt(0) + "/" + fname);
+				MMFG mmfg = MMFGCollection.getInstance().getMMFGForFile(
+						file);
+				System.out.println(mmfg.getId());
+				str[i] = mmfg.getId().toString();
+			}
+
+		}
+
+		qexec.close();
+
+		return str;
+
+	}
+
 }
