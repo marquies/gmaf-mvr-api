@@ -14,6 +14,10 @@
 		<maven.compiler.source>14</maven.compiler.source>
 		<maven.compiler.target>14</maven.compiler.target>
 	</properties>
+	<repositories>
+    		<id>github</id>
+		<url>https://maven.pkg.github.com/marquies/gmaf-mvr</url>
+	</repositories>
 
 	<dependencies>
 		<dependency>
