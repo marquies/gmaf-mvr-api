@@ -28,6 +28,14 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Build with Maven
+      - uses: s4u/maven-settings-action@v2.3.0
+        with:
+          servers: |
+            [{
+                "id": "github-library-project-b",
+                "username": "${{ secrets.ACCESS_TOKEN }}",
+                "password": "${{ secrets.ACCESS_TOKEN }}"
+            }]
       run: mvn -B package --file pom.xml -s $GITHUB_WORKSPACE/.github/workflows/maven-settings.xml
     - name: JUnit Report Action
       uses: mikepenz/action-junit-report@v3.7.6
