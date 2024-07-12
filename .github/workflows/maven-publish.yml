@@ -26,7 +26,7 @@ jobs:
         servers: |
             [{
                 "id": "github",
-                "username": "${{ secrets.ACCESS_TOKEN }}",
+                "username": "${{ secrets.USER_NAME }}",
                 "password": "${{ secrets.ACCESS_TOKEN }}"
             }]
     - name: Set up JDK 11
