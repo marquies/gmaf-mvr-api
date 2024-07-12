@@ -25,7 +25,7 @@ jobs:
       with:
         servers: |
             [{
-                "id": "github-library-project-b",
+                "id": "github",
                 "username": "${{ secrets.ACCESS_TOKEN }}",
                 "password": "${{ secrets.ACCESS_TOKEN }}"
             }]
