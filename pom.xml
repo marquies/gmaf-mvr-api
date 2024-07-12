@@ -20,6 +20,13 @@
 			<url>https://maven.pkg.github.com/marquies/gmaf-mvr</url>
 		</repository>
 	</repositories>
+	<distributionManagement>
+		<repository>
+			<id>github</id>
+    			<name>GitHub marquies Apache Maven Packages</name>
+			<url>https://maven.pkg.github.com/marquies/gmaf-mvr</url>
+		</repository>
+	</distributionManagement>
 
 	<dependencies>
 		<dependency>
