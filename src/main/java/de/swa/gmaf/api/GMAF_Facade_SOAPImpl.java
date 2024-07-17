@@ -26,6 +26,7 @@ import de.swa.ui.MMFGCollectionFactory;
 @WebService(endpointInterface = "de.swa.gmaf.api.GMAF_Facade")
 @Path("/api")
 public class GMAF_Facade_SOAPImpl implements GMAF_Facade {
+
 	// data structures to hold sessions
 	private Hashtable<String, String> errorMessages = new Hashtable<String, String>();
 	

@@ -22,6 +22,7 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.File;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.UUID;
@@ -136,11 +137,13 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 		// Build and return a response with the provided image
 		File file = mmfg.getGeneralMetadata().getFileReference();
 		System.out.println("-> " + file.getAbsolutePath());
-		String type = "application/jpg";
+		String type = "undefined";
 		try {
-			type = new MimetypesFileTypeMap().getContentType(file);
-		} catch (Error ex) {
-			ex.printStackTrace();
+			//type = new MimetypesFileTypeMap().getContentType(file);
+			type = Files.probeContentType(file.toPath());
+
+		} catch (Throwable t) {
+			System.out.println("-> " + t.getMessage());
 		}
 		System.out.println("--> " + type);
 		Response res = Response.ok().entity(file).type(type).build();
