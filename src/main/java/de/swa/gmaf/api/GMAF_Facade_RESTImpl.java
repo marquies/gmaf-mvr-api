@@ -15,6 +15,7 @@ import org.apache.jena.query.*;
 import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.server.ServerProperties;
+import org.json.JSONObject;
 //import software.amazon.awssdk.thirdparty.jackson.core.util.JacksonFeature;
 import javax.activation.MimetypesFileTypeMap;
 import javax.jws.WebMethod;
@@ -268,6 +269,32 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 		}
 		return str;
 	}
+
+	/**
+	 * returns Metadata for collection items
+	 **/
+	@POST
+	@Path("/getMetadataForItem/{auth-token}/{itemid}")
+	@Produces("application/json")
+	@WebMethod
+	public GeneralMetadata getCollectionMetadataForItem(@PathParam("auth-token") String auth_token, @PathParam("itemid") String itemid) {
+
+		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
+		Vector<MMFG> v = coll.getCollection();
+        for (MMFG mmfg : v) {
+			JSONObject jsonObject = new JSONObject(mmfg.getGeneralMetadata());
+			if (jsonObject.getString("id").equals(itemid)) {
+
+				return mmfg.getGeneralMetadata();
+			}
+		}
+		return new GeneralMetadata();
+	}
+
+
+
+
+
 	/*
 	 *//** processes an asset with the GMAF Core and returns the calculated MMFG **//*
 	public MMFG processAsset(String auth_token, @FormParam("file") File f) {
