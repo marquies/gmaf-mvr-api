@@ -7,6 +7,8 @@ import de.swa.gc.GraphCodeIO;
 import de.swa.gmaf.GMAF;
 import de.swa.mmfg.GeneralMetadata;
 import de.swa.mmfg.MMFG;
+import de.swa.mmfg.builder.FeatureVectorBuilder;
+import de.swa.mmfg.builder.XMLEncodeDecode;
 import de.swa.ui.Configuration;
 import de.swa.ui.MMFGCollection;
 import io.swagger.v3.jaxrs2.SwaggerSerializers;
@@ -23,6 +25,8 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Hashtable;
@@ -271,7 +275,7 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 	}
 
 	/**
-	 * returns Metadata for collection items
+	 * returns Metadata for specific collection items
 	 **/
 	@POST
 	@Path("/getMetadataForItem/{auth-token}/{itemid}")
@@ -291,9 +295,56 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 		return new GeneralMetadata();
 	}
 
+	/**
+	 * processes item based on id in the collection
+	 **/
+	@POST
+	@Path("/processAssetById/{auth-token}/{itemid}")
+	@Produces("application/json")
+	@WebMethod
+	public MMFG processAssetById(@PathParam("auth-token") String auth_token, @PathParam("itemid") String itemid) {
+		try {
+			MMFGCollection coll = MMFGCollection.getInstance(auth_token);
+			Vector<MMFG> v = coll.getCollection();
+			for (MMFG mmfg : v) {
+				JSONObject jsonObject = new JSONObject(mmfg.getGeneralMetadata());
+				if (jsonObject.getString("id").equals(itemid)) {
 
+					File f = mmfg.getGeneralMetadata().getFileReference();
 
+					FileInputStream fs = new FileInputStream(f);
+					byte[] bytes = fs.readAllBytes();
+					GMAF gmaf = new GMAF();
+					MMFG fv = gmaf.processAsset(bytes, f.getName(), "system", Configuration.getInstance().getMaxRecursions(), Configuration.getInstance().getMaxNodes(), f.getName(), f);
 
+					System.out.println("ProcessCommand: " + f.getName());
+					//LogPanel.getCurrentInstance().addToLog("MMFG created");
+
+					String xml = FeatureVectorBuilder.flatten(fv, new XMLEncodeDecode());
+					RandomAccessFile rf = new RandomAccessFile(Configuration.getInstance().getMMFGRepo() + File.separatorChar + f.getName() + ".mmfg", "rw");
+					rf.setLength(0);
+					rf.writeBytes(xml);
+					rf.close();
+
+					//LogPanel.getCurrentInstance().addToLog("MMFG exported to " + Configuration.getInstance().getMMFGRepo());
+
+					GraphCode gc = GraphCodeGenerator.generate(fv);
+					GraphCodeIO.write(gc, new File(Configuration.getInstance().getGraphCodeRepository() + File.separatorChar + f.getName() + ".gc"));
+					System.out.println("New Graph Code written to: " + Configuration.getInstance().getGraphCodeRepository() + File.separatorChar + f.getName() + ".gc");
+					MMFGCollection.getInstance().replaceMMFGInCollection(fv, f);
+
+					//LogPanel.getCurrentInstance().addToLog("GraphCode exported to " + Configuration.getInstance().getGraphCodeRepository());
+					return fv;
+				}
+			}
+
+		}
+		catch (Throwable x) {
+			x.printStackTrace();
+			errorMessages.put(auth_token, x.getMessage());
+		}
+		return null;
+	}
 
 	/*
 	 *//** processes an asset with the GMAF Core and returns the calculated MMFG **//*
