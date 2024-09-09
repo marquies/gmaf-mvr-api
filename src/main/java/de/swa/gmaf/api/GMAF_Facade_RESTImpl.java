@@ -13,10 +13,13 @@ import de.swa.ui.Configuration;
 import de.swa.ui.MMFGCollection;
 import io.swagger.v3.jaxrs2.SwaggerSerializers;
 import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource;
+import io.swagger.v3.oas.models.Paths;
+import org.apache.jena.base.Sys;
 import org.apache.jena.query.*;
 import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.server.ServerProperties;
+import org.json.JSONArray;
 import org.json.JSONObject;
 //import software.amazon.awssdk.thirdparty.jackson.core.util.JacksonFeature;
 import javax.activation.MimetypesFileTypeMap;
@@ -24,14 +27,9 @@ import javax.jws.WebMethod;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Hashtable;
-import java.util.UUID;
-import java.util.Vector;
+import java.util.*;
 
 /**
  * implementation of the GMAF REST API
@@ -49,7 +47,6 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 		//register(ApiListingResource.class);
 		register(SwaggerSerializers.class);
 		//register("/swagger-ui/**");  //addResourceLocations("classpath:/META-INF/resources/webjars/swagger-ui/2.1.3/");
-
 	}
 
 	/**
@@ -115,6 +112,7 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 		else throw new RuntimeException("no valid API key");
 	}
 
+	/**
 	/**
 	 * returns the collection of MMFGs for a given auth_token
 	 **/
@@ -206,6 +204,7 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 	@Produces("application/json")
 	@WebMethod
 	public String[] queryByKeyword(@PathParam("auth-token") String auth_token, @PathParam("query") String keywords) {
+		System.out.println("HIER");
 		GraphCode gc = new GraphCode();
 		Vector<String> dict = new Vector<String>();
 		keywords = keywords.replace(";", ",");
@@ -243,17 +242,83 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 		return null;
 	}
 
+
+	/**
+	 * Make a multimedia Query
+	 **/
+	@POST
+	@Path("/queryMultimedia/{auth-token}")
+	@Produces("application/json")
+	@WebMethod
+	public String queryMultiMedia(String filejson, @PathParam("auth-token") String auth_token) {
+
+		try {
+
+		JSONObject myjson = new JSONObject(filejson);
+		String text = myjson.getString("text");
+
+		System.out.println(text);
+
+			String name = myjson.getString("name");
+		}catch (Throwable t) {
+			t.printStackTrace();
+		}
+		/*
+		System.out.println("HIER");
+		GraphCode gc = new GraphCode();
+		Vector<String> dict = new Vector<String>();
+		keywords = keywords.replace(";", ",");
+		//keywords = keywords.replace(" ", ",");
+		String[] str = keywords.split(",");
+		for (String s : str) dict.add(s.trim());
+		gc.setDictionary(dict);
+
+		System.out.println("query by keyword " + keywords + " with token " + auth_token);
+		*/
+		/*
+		try {
+
+			Vector<String> ids = new Vector<String>();
+			MMFGCollection coll = MMFGCollection.getInstance(auth_token);
+			for (MMFG m : coll.getSimilarAssets(gc)) {
+				ids.add(m.getId().toString());
+			}
+
+			if (ids.size() == 0) {
+				Vector<MMFG> mmfgs = MMFGCollection.getInstance(auth_token).getCollection();
+				for (MMFG m : mmfgs) ids.add(m.getId().toString());
+			}
+
+			System.out.println("found " + ids.size() + " results");
+
+			String[] strx = new String[ids.size()];
+			for (int i = 0; i < strx.length; i++) {
+				String s = ids.get(i);
+				strx[i] = s;
+			}
+			return strx;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}	 */
+
+		String res=  "{\"result\" :\"finsisehd\"}";
+		return  res;
+
+	}
+
 	@POST
 	@Path("/get-collection-ids/{auth-token}")
 	@Produces("application/json")
 	@WebMethod
 	public String[] getCollectionIds(@PathParam("auth-token") String auth_token) {
+
 		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
 		Vector<MMFG> v = coll.getCollection();
 		String[] str = new String[v.size()];
 		for (int i = 0; i < v.size(); i++) {
 			str[i] = v.get(i).getGeneralMetadata().getId().toString();
 		}
+
 		return str;
 	}
 
@@ -265,12 +330,14 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 	@Produces("application/json")
 	@WebMethod
 	public GeneralMetadata[] getCollectionMetadata(@PathParam("auth-token") String auth_token) {
+
 		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
 		Vector<MMFG> v = coll.getCollection();
 		GeneralMetadata[] str = new GeneralMetadata[v.size()];
 		for (int i = 0; i < v.size(); i++) {
 			str[i] = v.get(i).getGeneralMetadata();
 		}
+
 		return str;
 	}
 
@@ -345,6 +412,99 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 		}
 		return null;
 	}
+
+	/**
+	 * adds item to the collection
+	 **/
+	@POST
+	@Path("/addItem/{auth-token}")
+	@Produces("application/json")
+	@WebMethod
+	public MMFG addItem( String filejson, @PathParam("auth-token") String auth_token) {
+
+		JSONObject myjson = new JSONObject(filejson);
+		String base64string = myjson.getString("file");
+		String name = myjson.getString("name");
+		boolean overwrite = myjson.getBoolean("overwrite");
+		String collectionPath= Configuration.getInstance().getCollectionPaths().get(0);
+		String storePath= collectionPath+"/"+name;
+
+		System.out.println(storePath);
+		File file = new File(storePath);
+		if(!overwrite){
+			if(file.exists()){
+				System.out.println("File already exists");
+				return null;
+			}
+		}
+		// Create a File object representing the file to write
+		byte[] contentBytes = Base64.getDecoder().decode(base64string);
+		// Use try-with-resources to ensure the stream is closed properly
+		try (FileOutputStream fos = new FileOutputStream(file)) {
+			fos.write(contentBytes);
+			System.out.println("File written successfully to "+ storePath);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+
+		try{
+			File f= new File(storePath);
+			GMAF gmaf = new GMAF();
+			MMFG fv = gmaf.processAsset(f);
+			MMFGCollection coll = MMFGCollection.getInstance(auth_token);
+			coll.addToCollection(fv);
+			return fv;
+		}catch (Exception e){
+			e.printStackTrace();
+		}
+
+
+		MMFG mmfg = new MMFG();
+		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
+		//coll.addToCollection();
+
+		return null;
+	}
+
+
+	/**
+	 * delete items from the collection
+	 **/
+	@POST
+	@Path("/deleteItem/{auth-token}/{itemid}")
+	@Produces("application/json")
+	@WebMethod
+	public boolean deleteItem(@PathParam("itemid") String itemid , @PathParam("auth-token") String auth_token) {
+
+		try {
+			MMFGCollection coll = MMFGCollection.getInstance(auth_token);
+			Vector<MMFG> v = coll.getCollection();
+			for (MMFG mmfg : v) {
+				JSONObject jsonObject = new JSONObject(mmfg.getGeneralMetadata());
+				if (jsonObject.getString("id").equals(itemid)) {
+					File f = mmfg.getGeneralMetadata().getFileReference();
+					String filename= mmfg.getGeneralMetadata().getFileName();
+
+					if(f.exists()){
+						//f.delete();
+						System.out.println("File deleted successfully at: "+f.getPath());
+						return true;
+					}
+				}
+			}
+		}
+		catch (Throwable x) {
+
+			x.printStackTrace();
+			errorMessages.put(auth_token, x.getMessage());
+			return false;
+		}
+
+		return false;
+	}
+
+
 
 	/*
 	 *//** processes an asset with the GMAF Core and returns the calculated MMFG **//*
