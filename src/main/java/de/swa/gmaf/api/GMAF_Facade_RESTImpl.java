@@ -1,12 +1,19 @@
 package de.swa.gmaf.api;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import de.swa.cmmco.CMMCO;
+import de.swa.cmmco.MD;
+import de.swa.cmmco.PD;
+import de.swa.cmmco.mmco.Image;
+import de.swa.cmmco.tools.Base64ToByteArrayDeserializer;
 import de.swa.gc.GraphCode;
 import de.swa.gc.GraphCodeGenerator;
 import de.swa.gc.GraphCodeIO;
 import de.swa.gmaf.GMAF;
 import de.swa.mmfg.GeneralMetadata;
 import de.swa.mmfg.MMFG;
+import de.swa.mmfg.Node;
 import de.swa.mmfg.builder.FeatureVectorBuilder;
 import de.swa.mmfg.builder.XMLEncodeDecode;
 import de.swa.ui.Configuration;
@@ -30,6 +37,7 @@ import javax.ws.rs.core.Response;
 import java.io.*;
 import java.nio.file.Files;
 import java.util.*;
+import com.google.gson.Gson;
 
 /**
  * implementation of the GMAF REST API
@@ -74,6 +82,8 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 		if (sessions.contains(api_key)) return sessions.get(api_key);
 		else throw new RuntimeException("no valid API key");
 	}
+
+
 
 
 	@POST
@@ -227,34 +237,48 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 
 
 	/**
-	 * Make a query with mmco
+	 * Make a query with cmmco
 	 **/
 	@POST
 	@Path("/getQueryIds/{auth-token}")
 	@Produces("application/json")
 	@WebMethod
-	public String getQueryIds(String cmmcoJson, @PathParam("auth-token") String auth_token) {
+	public String[] getQueryIds(String cmmcoJson, @PathParam("auth-token") String auth_token) {
 
 		try {
+			//Convert json to CMMCO Object
+			Gson gson = new GsonBuilder()
+					.registerTypeAdapter(byte[].class, new Base64ToByteArrayDeserializer())
+					.create();
+			CMMCO cmmco = gson.fromJson(cmmcoJson, CMMCO.class);
 
+			//Process
+			MMFG mmfgQuery= getMMFGfromKeywords(cmmco.getMd().getDescription());
 
-			JSONObject cmmco = new JSONObject(cmmcoJson);
+			GMAF gmaf= new GMAF();
+			Vector<String> plugins=  gmaf.getPlugins();
+			System.out.println(plugins);
 
-			JSONObject mmco= cmmco.getJSONObject("MMCO");
-			JSONObject image = mmco.getJSONObject("image");
-			String name = image.getString("name");
-			//String file= image.getString("file");
+			/*
+			//Image
+			Image image= cmmco.getMmco().getImage();
+			MMFG mmfgQuery = gmaf.processAsset(image.getFile(), image.getFilename(), "system", Configuration.getInstance().getMaxRecursions(), Configuration.getInstance().getMaxNodes(), null, null);
 
-			System.out.println(name);
-			//System.out.println(file.substring(0,500));
-			String md = cmmco.getString("MD");
+			//Audio
+
+			//Text
+			GraphCode
+			*/
+
+			GraphCode gcQuery = GraphCodeGenerator.generate(mmfgQuery);
+
+			return getSimilarAssetsForGraphCode(auth_token, gcQuery);
 
 		} catch (Throwable t) {
-			t.printStackTrace();
+			t.getMessage();
 		}
 
-		String res = "{\"result\" :\"finsisehd\"}";
-		return res;
+		return new String[0];
 
 	}
 
@@ -350,6 +374,60 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 			errorMessages.put(auth_token, x.getMessage());
 		}
 		return null;
+	}
+
+
+	private String[] getSimilarAssetsForGraphCode(String auth_token, GraphCode graphCode){
+
+		try {
+
+			Vector<String> ids = new Vector<String>();
+			MMFGCollection coll = MMFGCollection.getInstance(auth_token);
+			for (MMFG m : coll.getSimilarAssets(graphCode)) {
+				ids.add(m.getId().toString());
+			}
+
+			if (ids.size() == 0) {
+				Vector<MMFG> mmfgs = MMFGCollection.getInstance(auth_token).getCollection();
+				for (MMFG m : mmfgs) ids.add(m.getId().toString());
+			}
+
+			System.out.println("found " + ids.size() + " results");
+
+			String[] strx = new String[ids.size()];
+			for (int i = 0; i < strx.length; i++) {
+				String s = ids.get(i);
+				strx[i] = s;
+			}
+			return strx;
+		} catch (Exception e) {
+			e.printStackTrace();
+
+		}
+		return new String[0];
+	}
+
+	private MMFG getMMFGfromKeywords(String text){
+
+		MMFG mmfg = new MMFG();
+		//Keywords
+		if (text.split(",").length>=1){
+
+			GraphCode gc = new GraphCode();
+			Vector<String> dict = new Vector<String>();
+			text = text.replace(";", ",");
+			//keywords = keywords.replace(" ", ",");
+			String[] str = text.split(",");
+			for (String s : str) {
+				Node newNode= new Node();
+				newNode.setName(s);
+				mmfg.addNode(newNode);
+			}
+
+			return mmfg;
+		}
+
+		return mmfg;
 	}
 
 }
