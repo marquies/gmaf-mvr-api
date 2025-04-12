@@ -29,7 +29,7 @@ import java.util.*;
 @Path("/gmaf")
 public class GMAF_Facade_RESTImpl extends ResourceConfig {
 
-	private Vector<Id> lastCollectionResults = new Vector<Id>();
+//	private Vector<Id> lastCollectionResults = new Vector<Id>();
 
 
 	public GMAF_Facade_RESTImpl() {
@@ -487,52 +487,52 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 //	}
 
 
-	/**
-	 * gets A CMMCO from the collection. Option to get only metadata for tcmmco
-	 **/
-	@POST
-	@Path("/getCmmco/{auth-token}/{itemid}")
-	@Produces("application/json")
-	@WebMethod
-	public String getCmmco(@PathParam("auth-token") String auth_token, @PathParam("itemid") String itemid) {
-
-		try {
-			MMFGCollection coll = MMFGCollection.getInstance(auth_token);
-			Vector<MMFG> v = coll.getCollection();
-			UUID id = UUID.fromString(itemid);
-			MMFG mmfg = coll.getMMFGForId(id);
-
-			//If is a cmmco file
-			if (mmfg.getId() == null) {
-				System.out.println("CMMCO found");
-				CMMCO returnCMMCO = new CMMCO(mmfg); //coll.getMMFGForId(mmfg);
-				return mvrResult(returnCMMCO, null, 0);
-			}
-
-			//return only playback Info
-			if (mmfg.getId()!=null) {
-				Map<String, Object> baseInfo = new HashMap<>();
-				Map<String, Object> playbackInfo = new HashMap<>();
-				Map<String, Object> md = new HashMap<>();
-				playbackInfo.put("selectedScene", "0");
-				playbackInfo.put("start", mmfg.getBegin().getBegin());
-				playbackInfo.put("end", mmfg.getEnd().getEnd());
-				playbackInfo.put("originid", mmfg.getId());
-				baseInfo.put("id", itemid);
-				playbackInfo.put("id", itemid);
-				md.put("id", itemid);
-				md.put("filename", mmfg.getGeneralMetadata().getFileName());
-				baseInfo.put("md", md);
-				baseInfo.put("cmmco", playbackInfo);
-
-				return mvrResult(baseInfo, null, 0);
-			}
-
-		} catch (Throwable t) {
-			return mvrResult(null, t, 1);
-		}
-		return mvrResult(null, new Exception("Default Error"), 1);
-	}
+//	/**
+//	 * gets A CMMCO from the collection. Option to get only metadata for tcmmco
+//	 **/
+//	@POST
+//	@Path("/getCmmco/{auth-token}/{itemid}")
+//	@Produces("application/json")
+//	@WebMethod
+//	public String getCmmco(@PathParam("auth-token") String auth_token, @PathParam("itemid") String itemid) {
+//
+//		try {
+//			MMFGCollection coll = MMFGCollection.getInstance(auth_token);
+//			Vector<MMFG> v = coll.getCollection();
+//			UUID id = UUID.fromString(itemid);
+//			MMFG mmfg = coll.getMMFGForId(id);
+//
+//			//If is a cmmco file
+//			if (mmfg.getId() == null) {
+//				System.out.println("CMMCO found");
+//				CMMCO returnCMMCO = new CMMCO(mmfg); //coll.getMMFGForId(mmfg);
+//				return mvrResult(returnCMMCO, null, 0);
+//			}
+//
+//			//return only playback Info
+//			if (mmfg.getId()!=null) {
+//				Map<String, Object> baseInfo = new HashMap<>();
+//				Map<String, Object> playbackInfo = new HashMap<>();
+//				Map<String, Object> md = new HashMap<>();
+//				playbackInfo.put("selectedScene", "0");
+//				playbackInfo.put("start", mmfg.getBegin().getBegin());
+//				playbackInfo.put("end", mmfg.getEnd().getEnd());
+//				playbackInfo.put("originid", mmfg.getId());
+//				baseInfo.put("id", itemid);
+//				playbackInfo.put("id", itemid);
+//				md.put("id", itemid);
+//				md.put("filename", mmfg.getGeneralMetadata().getFileName());
+//				baseInfo.put("md", md);
+//				baseInfo.put("cmmco", playbackInfo);
+//
+//				return mvrResult(baseInfo, null, 0);
+//			}
+//
+//		} catch (Throwable t) {
+//			return mvrResult(null, t, 1);
+//		}
+//		return mvrResult(null, new Exception("Default Error"), 1);
+//	}
 
 
 	private String mvrResult(Object result, Throwable error, int code) {
