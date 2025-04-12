@@ -14,7 +14,6 @@ import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource;
 import org.apache.jena.query.*;
 import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.server.ResourceConfig;
-import org.glassfish.jersey.server.ServerProperties;
 //import software.amazon.awssdk.thirdparty.jackson.core.util.JacksonFeature;
 import javax.activation.MimetypesFileTypeMap;
 import javax.jws.WebMethod;
@@ -22,16 +21,17 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Hashtable;
-import java.util.UUID;
-import java.util.Vector;
+import java.util.*;
 
 /**
  * implementation of the GMAF REST API
  **/
 @Path("/gmaf")
 public class GMAF_Facade_RESTImpl extends ResourceConfig {
+
+	private Vector<Id> lastCollectionResults = new Vector<Id>();
+
+
 	public GMAF_Facade_RESTImpl() {
 		//	packages("de.swa.gmaf.api");
 		register(GMAF_Facade_RESTImpl.class);
@@ -134,6 +134,8 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 		UUID id = UUID.fromString(mmfg_id);
 		MMFG mmfg = coll.getMMFGForId(id);
 		// Build and return a response with the provided image
+		if (mmfg == null)
+			return Response.status(Response.Status.NOT_FOUND).build();
 		File file = mmfg.getGeneralMetadata().getFileReference();
 		System.out.println("-> " + file.getAbsolutePath());
 		String type = "application/jpg";
@@ -248,6 +250,7 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 		}
 		return str;
 	}
+
 
 	/**
 	 * returns Metadata for collection items
@@ -429,4 +432,259 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 
 	}
 
+	@POST
+	@Path("/getQueryIds/{auth-token}/true")
+	@Produces("application/json")
+	@WebMethod
+	public String getQueryIds(@PathParam("auth-token") String auth_token) {
+		GraphCode gc = new GraphCode();
+		Vector<String> dict = new Vector<String>();
+		String keywords = "test";
+		keywords = keywords.replace(";", ",");
+		//keywords = keywords.replace(" ", ",");
+		String[] str = keywords.split(",");
+		for (String s : str) dict.add(s.trim());
+		gc.setDictionary(dict);
+
+		System.out.println("query by keyword " + keywords + " with token " + auth_token);
+
+		try {
+
+			Vector<CMMCO> ids = new Vector<>();
+			MMFGCollection coll = MMFGCollection.getInstance(auth_token);
+			for (MMFG m : coll.getSimilarAssets(gc)) {
+				ids.add(new CMMCO(m.getId().toString(), m.getGeneralMetadata().getFileName()));
+			}
+
+//			if (ids.size() == 0) {
+//				Vector<MMFG> mmfgs = MMFGCollection.getInstance(auth_token).getCollection();
+//				for (MMFG m : mmfgs) ids.add(m.getId().toString());
+//			}
+			if (ids.size() == 0) {
+				Vector<MMFG> mmfgs = MMFGCollection.getInstance(auth_token).getCollection();
+				for (MMFG m : mmfgs) {
+					ids.add(new CMMCO(m.getId().toString(), m.getGeneralMetadata().getFileName()));
+				}
+			}
+
+			System.out.println("found " + ids.size() + " results");
+
+			Map<String, Object> data = new HashMap<>();
+			Map<String, Object> results = new HashMap<>();
+			results.put("results", ids);
+			results.put("currentPage", Integer.valueOf(0));
+			results.put("totalPages", 1);
+			results.put("allresults", ids.size());
+			data.put("data", results);
+
+
+			Gson gson = new Gson();
+			return gson.toJson(data);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+
+	/**
+	 * gets A CMMCO from the collection. Option to get only metadata for tcmmco
+	 **/
+	@POST
+	@Path("/getCmmco/{auth-token}/{itemid}")
+	@Produces("application/json")
+	@WebMethod
+	public String getCmmco(@PathParam("auth-token") String auth_token, @PathParam("itemid") String itemid) {
+
+		try {
+			MMFGCollection coll = MMFGCollection.getInstance(auth_token);
+			Vector<MMFG> v = coll.getCollection();
+			UUID id = UUID.fromString(itemid);
+			MMFG mmfg = coll.getMMFGForId(id);
+
+			//If is a cmmco file
+			if (mmfg.getId() == null) {
+				System.out.println("CMMCO found");
+				CMMCO returnCMMCO = new CMMCO(mmfg); //coll.getMMFGForId(mmfg);
+				return mvrResult(returnCMMCO, null, 0);
+			}
+
+			//return only playback Info
+			if (mmfg.getId()!=null) {
+				Map<String, Object> baseInfo = new HashMap<>();
+				Map<String, Object> playbackInfo = new HashMap<>();
+				Map<String, Object> md = new HashMap<>();
+				playbackInfo.put("selectedScene", "0");
+				playbackInfo.put("start", mmfg.getBegin().getBegin());
+				playbackInfo.put("end", mmfg.getEnd().getEnd());
+				playbackInfo.put("originid", mmfg.getId());
+				baseInfo.put("id", itemid);
+				playbackInfo.put("id", itemid);
+				md.put("id", itemid);
+				md.put("filename", mmfg.getGeneralMetadata().getFileName());
+				baseInfo.put("md", md);
+				baseInfo.put("cmmco", playbackInfo);
+
+				return mvrResult(baseInfo, null, 0);
+			}
+
+		} catch (Throwable t) {
+			return mvrResult(null, t, 1);
+		}
+		return mvrResult(null, new Exception("Default Error"), 1);
+	}
+
+
+	private String mvrResult(Object result, Throwable error, int code) {
+		Map<String, Object> errorObject = new HashMap<>();
+		if (error != null) {
+			errorObject.put("code", code);
+			errorObject.put("message", error.getMessage());
+		}
+
+		Map<String, Object> responseObject = new HashMap<>();
+		responseObject.put("data", result);
+		responseObject.put("error", error != null ? errorObject : new Object());
+
+		//Custom Json for Handling MMCO Files, send Files
+		Gson gson = new Gson();
+//		Gson gson = new GsonBuilder()
+//				.registerTypeAdapter(MMCO_File.class, new FileSerializerBase64())
+//				.create();
+//
+		String jsonresult = gson.toJson(responseObject);
+		return jsonresult;
+	}
+
+
+	private CMMCO getCmmcoForId(String authToken, String itemid) {
+
+		try {
+			MMFGCollection coll = MMFGCollection.getInstance(authToken);
+			Vector<MMFG> v = coll.getCollection();
+			UUID id = UUID.fromString(itemid);
+			MMFG mmfg = coll.getMMFGForId(id);
+			CMMCO cmmco= new CMMCO(mmfg);
+			//cmmco.getMd().setId(mmfg.getId().toString());
+			return cmmco;
+
+		} catch (Throwable t) {
+			System.out.println("ERROR getting CMMCO for ID" + t.getMessage());
+			return new CMMCO(new MMFG());
+		}
+	}
+
+	private PaginationResult getPaginationResults( int page, int resultsPerPage,Vector<Id> lastQueryResults){
+
+		// Validate inputs
+		if (lastQueryResults == null || page < 1 || resultsPerPage < 1) {
+
+			return new PaginationResult(new Vector<Id>(),0,0, lastQueryResults);// Return an empty array for invalid inputs
+		}
+
+		// Calculate the total number of pages
+		int totalResults = lastQueryResults.size();
+		int totalPages = (int) Math.ceil((double) totalResults / resultsPerPage);
+
+		// Ensure the page number is within bounds
+		if (page > totalPages) {
+			page = totalPages;
+		}
+
+		Vector<Id> resultsVector= new Vector<Id>();
+		int counter=0;
+		for (Id result : lastQueryResults) {
+
+			if((counter>=(page-1)*resultsPerPage)  && (counter<page*resultsPerPage)){
+
+				resultsVector.add(result);
+			}
+			counter++;
+		}
+
+		return new PaginationResult(resultsVector, page, totalPages, lastQueryResults);
+
+	}
+
+	/**
+	 * gets page of the collection results
+	 **/
+	@POST
+	@Path("/getCollectionPage/{auth-token}/{page}/{resultsPerPage}")
+	@Produces("application/json")
+	@WebMethod
+	public String getCollectionPage(@PathParam("auth-token") String auth_token, @PathParam("page") int page, @PathParam("resultsPerPage") int resultsPerPage) {
+
+		return this.mvrResult(this.getPaginationResults(page, resultsPerPage, lastCollectionResults), null, 0);
+	}
+
+	public class CMMCO {
+		private Metadata md;
+
+		public String getId() {
+			return id;
+		}
+
+		public void setId(String id) {
+			this.id = id;
+		}
+
+		private String id;
+
+		public CMMCO(MMFG mmfg) {
+			this.md = new Metadata(mmfg.getId().toString());
+			this.md.setFilename(mmfg.getGeneralMetadata().getFileName());
+			this.id = mmfg.getId().toString();
+		}
+
+		public String getSelectedScene() {
+			return selectedScene;
+		}
+
+		public void setSelectedScene(String selectedScene) {
+			this.selectedScene = selectedScene;
+		}
+
+		private String selectedScene = "";
+
+		public CMMCO(String id, String fileName) {
+			this.id = id;
+			this.md = new Metadata(id);
+			this.md.setFilename(fileName);
+		}
+
+		public String getMd() {
+			return md.getId();
+		}
+
+		public void setMd(String id) {
+			this.md.setId(id);
+		}
+
+		private class Metadata {
+			private String id;
+			private String filename;
+
+			public Metadata(String id) {
+				this.id = id;
+			}
+
+			public String getId() {
+				return id;
+			}
+
+			public void setId(String id) {
+				this.id = id;
+			}
+
+			public void setFilename(String filename) {
+				this.filename = filename;
+			}
+
+			public String getFilename() {
+				return filename;
+			}
+		}
+	}
 }
+
