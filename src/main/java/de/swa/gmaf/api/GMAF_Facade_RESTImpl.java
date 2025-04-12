@@ -431,60 +431,60 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 		return str;
 
 	}
-
-	@POST
-	@Path("/getQueryIds/{auth-token}/true")
-	@Produces("application/json")
-	@WebMethod
-	public String getQueryIds(@PathParam("auth-token") String auth_token) {
-		GraphCode gc = new GraphCode();
-		Vector<String> dict = new Vector<String>();
-		String keywords = "test";
-		keywords = keywords.replace(";", ",");
-		//keywords = keywords.replace(" ", ",");
-		String[] str = keywords.split(",");
-		for (String s : str) dict.add(s.trim());
-		gc.setDictionary(dict);
-
-		System.out.println("query by keyword " + keywords + " with token " + auth_token);
-
-		try {
-
-			Vector<CMMCO> ids = new Vector<>();
-			MMFGCollection coll = MMFGCollection.getInstance(auth_token);
-			for (MMFG m : coll.getSimilarAssets(gc)) {
-				ids.add(new CMMCO(m.getId().toString(), m.getGeneralMetadata().getFileName()));
-			}
-
+//
+//	@POST
+//	@Path("/getQueryIds/{auth-token}/true")
+//	@Produces("application/json")
+//	@WebMethod
+//	public String getQueryIds(@PathParam("auth-token") String auth_token) {
+//		GraphCode gc = new GraphCode();
+//		Vector<String> dict = new Vector<String>();
+//		String keywords = "test";
+//		keywords = keywords.replace(";", ",");
+//		//keywords = keywords.replace(" ", ",");
+//		String[] str = keywords.split(",");
+//		for (String s : str) dict.add(s.trim());
+//		gc.setDictionary(dict);
+//
+//		System.out.println("query by keyword " + keywords + " with token " + auth_token);
+//
+//		try {
+//
+//			Vector<CMMCO> ids = new Vector<>();
+//			MMFGCollection coll = MMFGCollection.getInstance(auth_token);
+//			for (MMFG m : coll.getSimilarAssets(gc)) {
+//				ids.add(new CMMCO(m.getId().toString(), m.getGeneralMetadata().getFileName()));
+//			}
+//
+////			if (ids.size() == 0) {
+////				Vector<MMFG> mmfgs = MMFGCollection.getInstance(auth_token).getCollection();
+////				for (MMFG m : mmfgs) ids.add(m.getId().toString());
+////			}
 //			if (ids.size() == 0) {
 //				Vector<MMFG> mmfgs = MMFGCollection.getInstance(auth_token).getCollection();
-//				for (MMFG m : mmfgs) ids.add(m.getId().toString());
+//				for (MMFG m : mmfgs) {
+//					ids.add(new CMMCO(m.getId().toString(), m.getGeneralMetadata().getFileName()));
+//				}
 //			}
-			if (ids.size() == 0) {
-				Vector<MMFG> mmfgs = MMFGCollection.getInstance(auth_token).getCollection();
-				for (MMFG m : mmfgs) {
-					ids.add(new CMMCO(m.getId().toString(), m.getGeneralMetadata().getFileName()));
-				}
-			}
-
-			System.out.println("found " + ids.size() + " results");
-
-			Map<String, Object> data = new HashMap<>();
-			Map<String, Object> results = new HashMap<>();
-			results.put("results", ids);
-			results.put("currentPage", Integer.valueOf(0));
-			results.put("totalPages", 1);
-			results.put("allresults", ids.size());
-			data.put("data", results);
-
-
-			Gson gson = new Gson();
-			return gson.toJson(data);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
+//
+//			System.out.println("found " + ids.size() + " results");
+//
+//			Map<String, Object> data = new HashMap<>();
+//			Map<String, Object> results = new HashMap<>();
+//			results.put("results", ids);
+//			results.put("currentPage", Integer.valueOf(0));
+//			results.put("totalPages", 1);
+//			results.put("allresults", ids.size());
+//			data.put("data", results);
+//
+//
+//			Gson gson = new Gson();
+//			return gson.toJson(data);
+//		} catch (Exception e) {
+//			e.printStackTrace();
+//		}
+//		return null;
+//	}
 
 
 	/**
@@ -546,145 +546,109 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 		responseObject.put("data", result);
 		responseObject.put("error", error != null ? errorObject : new Object());
 
-		//Custom Json for Handling MMCO Files, send Files
 		Gson gson = new Gson();
-//		Gson gson = new GsonBuilder()
-//				.registerTypeAdapter(MMCO_File.class, new FileSerializerBase64())
-//				.create();
-//
 		String jsonresult = gson.toJson(responseObject);
 		return jsonresult;
 	}
 
 
-	private CMMCO getCmmcoForId(String authToken, String itemid) {
+//	private CMMCO getCmmcoForId(String authToken, String itemid) {
+//
+//		try {
+//			MMFGCollection coll = MMFGCollection.getInstance(authToken);
+//			Vector<MMFG> v = coll.getCollection();
+//			UUID id = UUID.fromString(itemid);
+//			MMFG mmfg = coll.getMMFGForId(id);
+//			CMMCO cmmco= new CMMCO(mmfg);
+//			//cmmco.getMd().setId(mmfg.getId().toString());
+//			return cmmco;
+//
+//		} catch (Throwable t) {
+//			System.out.println("ERROR getting CMMCO for ID" + t.getMessage());
+//			return new CMMCO(new MMFG());
+//		}
+//	}
+//
 
-		try {
-			MMFGCollection coll = MMFGCollection.getInstance(authToken);
-			Vector<MMFG> v = coll.getCollection();
-			UUID id = UUID.fromString(itemid);
-			MMFG mmfg = coll.getMMFGForId(id);
-			CMMCO cmmco= new CMMCO(mmfg);
-			//cmmco.getMd().setId(mmfg.getId().toString());
-			return cmmco;
-
-		} catch (Throwable t) {
-			System.out.println("ERROR getting CMMCO for ID" + t.getMessage());
-			return new CMMCO(new MMFG());
-		}
-	}
-
-	private PaginationResult getPaginationResults( int page, int resultsPerPage,Vector<Id> lastQueryResults){
-
-		// Validate inputs
-		if (lastQueryResults == null || page < 1 || resultsPerPage < 1) {
-
-			return new PaginationResult(new Vector<Id>(),0,0, lastQueryResults);// Return an empty array for invalid inputs
-		}
-
-		// Calculate the total number of pages
-		int totalResults = lastQueryResults.size();
-		int totalPages = (int) Math.ceil((double) totalResults / resultsPerPage);
-
-		// Ensure the page number is within bounds
-		if (page > totalPages) {
-			page = totalPages;
-		}
-
-		Vector<Id> resultsVector= new Vector<Id>();
-		int counter=0;
-		for (Id result : lastQueryResults) {
-
-			if((counter>=(page-1)*resultsPerPage)  && (counter<page*resultsPerPage)){
-
-				resultsVector.add(result);
-			}
-			counter++;
-		}
-
-		return new PaginationResult(resultsVector, page, totalPages, lastQueryResults);
-
-	}
-
-	/**
-	 * gets page of the collection results
-	 **/
-	@POST
-	@Path("/getCollectionPage/{auth-token}/{page}/{resultsPerPage}")
-	@Produces("application/json")
-	@WebMethod
-	public String getCollectionPage(@PathParam("auth-token") String auth_token, @PathParam("page") int page, @PathParam("resultsPerPage") int resultsPerPage) {
-
-		return this.mvrResult(this.getPaginationResults(page, resultsPerPage, lastCollectionResults), null, 0);
-	}
-
-	public class CMMCO {
-		private Metadata md;
-
-		public String getId() {
-			return id;
-		}
-
-		public void setId(String id) {
-			this.id = id;
-		}
-
-		private String id;
-
-		public CMMCO(MMFG mmfg) {
-			this.md = new Metadata(mmfg.getId().toString());
-			this.md.setFilename(mmfg.getGeneralMetadata().getFileName());
-			this.id = mmfg.getId().toString();
-		}
-
-		public String getSelectedScene() {
-			return selectedScene;
-		}
-
-		public void setSelectedScene(String selectedScene) {
-			this.selectedScene = selectedScene;
-		}
-
-		private String selectedScene = "";
-
-		public CMMCO(String id, String fileName) {
-			this.id = id;
-			this.md = new Metadata(id);
-			this.md.setFilename(fileName);
-		}
-
-		public String getMd() {
-			return md.getId();
-		}
-
-		public void setMd(String id) {
-			this.md.setId(id);
-		}
-
-		private class Metadata {
-			private String id;
-			private String filename;
-
-			public Metadata(String id) {
-				this.id = id;
-			}
-
-			public String getId() {
-				return id;
-			}
-
-			public void setId(String id) {
-				this.id = id;
-			}
-
-			public void setFilename(String filename) {
-				this.filename = filename;
-			}
-
-			public String getFilename() {
-				return filename;
-			}
-		}
-	}
+//	/**
+//	 * gets page of the collection results
+//	 **/
+//	@POST
+//	@Path("/getCollectionPage/{auth-token}/{page}/{resultsPerPage}")
+//	@Produces("application/json")
+//	@WebMethod
+//	public String getCollectionPage(@PathParam("auth-token") String auth_token, @PathParam("page") int page, @PathParam("resultsPerPage") int resultsPerPage) {
+//
+//		return this.mvrResult(this.getPaginationResults(page, resultsPerPage, lastCollectionResults), null, 0);
+//	}
+//
+//	public class CMMCO {
+//		private Metadata md;
+//
+//		public String getId() {
+//			return id;
+//		}
+//
+//		public void setId(String id) {
+//			this.id = id;
+//		}
+//
+//		private String id;
+//
+//		public CMMCO(MMFG mmfg) {
+//			this.md = new Metadata(mmfg.getId().toString());
+//			this.md.setFilename(mmfg.getGeneralMetadata().getFileName());
+//			this.id = mmfg.getId().toString();
+//		}
+//
+//		public String getSelectedScene() {
+//			return selectedScene;
+//		}
+//
+//		public void setSelectedScene(String selectedScene) {
+//			this.selectedScene = selectedScene;
+//		}
+//
+//		private String selectedScene = "";
+//
+//		public CMMCO(String id, String fileName) {
+//			this.id = id;
+//			this.md = new Metadata(id);
+//			this.md.setFilename(fileName);
+//		}
+//
+//		public String getMd() {
+//			return md.getId();
+//		}
+//
+//		public void setMd(String id) {
+//			this.md.setId(id);
+//		}
+//
+//		private class Metadata {
+//			private String id;
+//			private String filename;
+//
+//			public Metadata(String id) {
+//				this.id = id;
+//			}
+//
+//			public String getId() {
+//				return id;
+//			}
+//
+//			public void setId(String id) {
+//				this.id = id;
+//			}
+//
+//			public void setFilename(String filename) {
+//				this.filename = filename;
+//			}
+//
+//			public String getFilename() {
+//				return filename;
+//			}
+//		}
+//	}
 }
 
