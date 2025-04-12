@@ -356,7 +356,15 @@ public class GMAF_Facade_RESTImpl extends ResourceConfig {
 	@Path("/test")
 	@Produces("application/json")
 	@WebMethod
-	public String getTest() {
+	public String getTestPost() {
+		System.out.println("Called Test, return stuff");
+		return "test";
+	}
+	@GET
+	@Path("/test")
+	@Produces("application/json")
+	@WebMethod
+	public String getTestGet() {
 		System.out.println("Called Test, return stuff");
 		return "test";
 	}
