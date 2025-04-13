@@ -10,18 +10,20 @@ import de.swa.mmfg.MMFG;
 import de.swa.ui.Configuration;
 import de.swa.ui.MMFGCollection;
 import org.apache.jena.query.*;
-import javax.activation.MimetypesFileTypeMap;
-import javax.jws.WebMethod;
-import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+
+import jakarta.activation.MimetypesFileTypeMap;
+import jakarta.jws.WebMethod;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+
 import java.io.File;
 import java.util.*;
 
 /**
  * implementation of the GMAF REST API
  **/
-@Path ("/gmaf")
+@Path("/gmaf")
 public class GMAF_Facade_RESTImpl {
 
 	public GMAF_Facade_RESTImpl() {
@@ -422,4 +424,3 @@ public class GMAF_Facade_RESTImpl {
 	}
 
 }
-

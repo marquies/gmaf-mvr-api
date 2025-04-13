@@ -14,7 +14,8 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.source>14</maven.compiler.source>
 		<maven.compiler.target>14</maven.compiler.target>
-		<jersey.version>2.46</jersey.version>
+		<jakarta.xml.ws.version>4.0.0</jakarta.xml.ws.version>
+		<jersey.version>3.1.3</jersey.version>
 	</properties>
 	<repositories>
 		<repository>
@@ -32,38 +33,41 @@
 
 	<dependencies>
 
-		<!-- Jakarta RESTful Web Services API -->
+		<!-- Jakarta EE Dependencies -->
+		<dependency>
+			<groupId>jakarta.xml.ws</groupId>
+			<artifactId>jakarta.xml.ws-api</artifactId>
+			<version>${jakarta.xml.ws.version}</version>
+		</dependency>
 		<dependency>
 			<groupId>jakarta.ws.rs</groupId>
 			<artifactId>jakarta.ws.rs-api</artifactId>
-			<version>2.1.6</version>
+			<version>3.1.0</version>
+		</dependency>
+		<dependency>
+			<groupId>jakarta.activation</groupId>
+			<artifactId>jakarta.activation-api</artifactId>
+			<version>2.1.2</version>
 		</dependency>
 
+		<!-- Jersey Dependencies -->
 		<dependency>
 			<groupId>org.glassfish.jersey.core</groupId>
 			<artifactId>jersey-server</artifactId>
 			<version>${jersey.version}</version>
 		</dependency>
-
 		<dependency>
-			<groupId>org.glassfish.jersey.media</groupId>
-			<artifactId>jersey-media-json-jackson</artifactId>
+			<groupId>org.glassfish.jersey.inject</groupId>
+			<artifactId>jersey-hk2</artifactId>
 			<version>${jersey.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>org.glassfish.jersey.media</groupId>
-			<artifactId>jersey-media-multipart</artifactId>
+			<groupId>org.glassfish.jersey.containers</groupId>
+			<artifactId>jersey-container-jdk-http</artifactId>
 			<version>${jersey.version}</version>
 		</dependency>
-
 
 		<!-- WebServcies API -->
-		<dependency>
-			<groupId>com.sun.xml.ws</groupId>
-			<artifactId>jaxws-rt</artifactId>
-			<version>2.3.7</version>
-		</dependency>
-
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-lang3</artifactId>

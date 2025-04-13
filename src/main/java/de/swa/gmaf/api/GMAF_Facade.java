@@ -1,16 +1,17 @@
 package de.swa.gmaf.api;
 
+import de.swa.gc.GraphCode;
+import de.swa.mmfg.MMFG;
+
+import jakarta.jws.WebMethod;
+import jakarta.jws.WebService;
 import java.io.File;
 import java.net.URL;
 import java.util.Vector;
 
-import javax.jws.WebMethod;
-import javax.jws.WebService;
-
-import de.swa.gc.GraphCode;
-import de.swa.mmfg.MMFG;
-
-/** GMAF API - SOAP implementation facade **/
+/**
+ * interface for the GMAF API
+ **/
 @WebService
 public interface GMAF_Facade {
 	/** returns a new session token **/
