@@ -29,9 +29,6 @@ import java.util.*;
 @Path("/gmaf")
 public class GMAF_Facade_RESTImpl extends ResourceConfig {
 
-//	private Vector<Id> lastCollectionResults = new Vector<Id>();
-
-
 	public GMAF_Facade_RESTImpl() {
 		//	packages("de.swa.gmaf.api");
 		register(GMAF_Facade_RESTImpl.class);
