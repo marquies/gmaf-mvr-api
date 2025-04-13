@@ -10,7 +10,12 @@ import de.swa.mmfg.MMFG;
 import de.swa.ui.Configuration;
 import de.swa.ui.MMFGCollection;
 import io.swagger.v3.jaxrs2.SwaggerSerializers;
+import io.swagger.v3.jaxrs2.integration.JaxrsOpenApiContextBuilder;
 import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource;
+import io.swagger.v3.oas.integration.OpenApiConfigurationException;
+import io.swagger.v3.oas.integration.SwaggerConfiguration;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Info;
 import org.apache.jena.query.*;
 import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -25,18 +30,10 @@ import java.util.*;
 /**
  * implementation of the GMAF REST API
  **/
-@Path("/gmaf")
-public class GMAF_Facade_RESTImpl extends ResourceConfig {
+@Path ("/gmaf")
+public class GMAF_Facade_RESTImpl {
 
 	public GMAF_Facade_RESTImpl() {
-		//	packages("de.swa.gmaf.api");
-		register(GMAF_Facade_RESTImpl.class);
-		register(JacksonFeature.class);
-		OpenApiResource openApiResource = new OpenApiResource();
-		register(openApiResource);
-
-		register(SwaggerSerializers.class);
-
 	}
 
 	/**
