@@ -16,8 +16,11 @@ import jakarta.jws.WebMethod;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.StreamingOutput;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.OutputStream;
 import java.util.*;
 
 /**
@@ -116,20 +119,37 @@ public class GMAF_Facade_RESTImpl {
 		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
 		UUID id = UUID.fromString(mmfg_id);
 		MMFG mmfg = coll.getMMFGForId(id);
-		// Build and return a response with the provided image
 		if (mmfg == null)
 			return Response.status(Response.Status.NOT_FOUND).build();
 		File file = mmfg.getGeneralMetadata().getFileReference();
 		System.out.println("-> " + file.getAbsolutePath());
+		if (!file.exists())
+			return Response.status(Response.Status.NOT_FOUND).build();
 		String type = "application/jpg";
 		try {
 			type = new MimetypesFileTypeMap().getContentType(file);
 		} catch (Error ex) {
 			ex.printStackTrace();
 		}
-		System.out.println("--> " + type);
-		Response res = Response.ok().entity(file).type(type).build();
-		System.out.println("---> " + res.getHeaderString("contentType"));
+		//System.out.println("--> " + type);
+		StreamingOutput stream = output -> {
+			try (FileInputStream fis = new FileInputStream(file)) {
+				byte[] buffer = new byte[8192];
+				int bytesRead;
+				while ((bytesRead = fis.read(buffer)) != -1) {
+					output.write(buffer, 0, bytesRead);
+				}
+				output.flush();
+			} catch (java.io.IOException e) {
+				System.err.println("Client disconnected during preview: " + e.getMessage());
+				throw e;
+			}
+		};
+		Response res = Response.ok(stream)
+				.type(type)
+				.header("Content-Length", file.length())
+				.build();
+		//System.out.println("---> " + res.getHeaderString("contentType"));
 		return res;
 	}
 
@@ -145,6 +165,53 @@ public class GMAF_Facade_RESTImpl {
 		UUID id = UUID.fromString(mmfg_id);
 		MMFG mmfg = coll.getMMFGForId(id);
 		return mmfg.getGeneralMetadata().getPreviewUrl().toString();
+	}
+
+	/**
+	 * downloads an asset with given id
+	 **/
+	@GET
+	@Path("/download/{auth-token}/{id}")
+	@Produces("application/octet-stream")
+	@WebMethod
+	public Response downloadAsset(@PathParam("auth-token") String auth_token, @PathParam("id") String mmfg_id) {
+		System.out.println("download " + mmfg_id);
+		MMFGCollection coll = MMFGCollection.getInstance(auth_token);
+		UUID id = UUID.fromString(mmfg_id);
+		MMFG mmfg = coll.getMMFGForId(id);
+		if (mmfg == null)
+			return Response.status(Response.Status.NOT_FOUND).build();
+		File file = mmfg.getGeneralMetadata().getFileReference();
+		System.out.println("-> " + file.getAbsolutePath());
+		if (!file.exists())
+			return Response.status(Response.Status.NOT_FOUND).build();
+		String type = "application/octet-stream";
+		try {
+			type = new MimetypesFileTypeMap().getContentType(file);
+		} catch (Error ex) {
+			ex.printStackTrace();
+		}
+		System.out.println("--> " + type);
+		StreamingOutput stream = output -> {
+			try (FileInputStream fis = new FileInputStream(file)) {
+				byte[] buffer = new byte[8192];
+				int bytesRead;
+				while ((bytesRead = fis.read(buffer)) != -1) {
+					output.write(buffer, 0, bytesRead);
+				}
+				output.flush();
+			} catch (java.io.IOException e) {
+				System.err.println("Client disconnected during download: " + e.getMessage());
+				throw e;
+			}
+		};
+		Response res = Response.ok(stream)
+				.type(type)
+				.header("Content-Length", file.length())
+				.header("Content-Disposition", "attachment; filename=\"" + file.getName() + "\"")
+				.build();
+		System.out.println("---> " + res.getHeaderString("contentType"));
+		return res;
 	}
 
 
