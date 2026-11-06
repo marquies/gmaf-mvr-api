@@ -56,6 +56,19 @@ jobs:
         server-id: github # Value of the distributionManagement/repository/id field of the pom.xml
         settings-path: ${{ github.workspace }} # location for the settings.xml file
 
+    - name: Set unique package version for this commit
+      # GitHub Packages is immutable: once a version exists, every further deploy of that
+      # same version fails with HTTP 409. Derive the base version from the POM and append the
+      # short commit SHA, so each CI run publishes a distinct version. Runtime-only change;
+      # the POM in the repository is never modified permanently.
+      run: |
+        set -euo pipefail
+        BASE_VERSION="$(mvn -B --no-transfer-progress help:evaluate -Dexpression=project.version -q -DforceStdout)"
+        BASE_VERSION="${BASE_VERSION%-SNAPSHOT}"
+        UNIQUE_VERSION="${BASE_VERSION}-${GITHUB_SHA::7}"
+        echo "Publishing version ${UNIQUE_VERSION} (POM version: ${BASE_VERSION})"
+        mvn -B --no-transfer-progress versions:set -DnewVersion="${UNIQUE_VERSION}" -DgenerateBackupPoms=false
+
     - name: Publish to GitHub Packages Apache Maven
       run: mvn -B --no-transfer-progress deploy -DskipTests -s $GITHUB_WORKSPACE/.github/workflows/maven-settings.xml -P github
       env:
