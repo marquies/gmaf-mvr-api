@@ -4,7 +4,7 @@
 
 	<groupId>de.swa</groupId>
 	<artifactId>gmaf-api-mvr</artifactId>
-	<version>1.0.4</version>
+	<version>1.1.0</version>
 	<packaging>jar</packaging>
 
 	<name>gmaf-api-mvr</name>
@@ -17,6 +17,7 @@
 		<jakarta.xml.ws.version>4.0.0</jakarta.xml.ws.version>
 		<jersey.version>3.1.3</jersey.version>
 		<junit.version>5.11.4</junit.version>
+		<gmaf-mvr.version>1.1.0</gmaf-mvr.version>
 	</properties>
 	<repositories>
 		<repository>
@@ -92,7 +93,7 @@
 		<dependency>
 			<groupId>de.swa</groupId>
 			<artifactId>gmaf-mvr</artifactId>
-			<version>1.0.6</version>
+			<version>${gmaf-mvr.version}</version>
 		</dependency>
 	</dependencies>
 
