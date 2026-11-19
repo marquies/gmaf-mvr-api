@@ -5,8 +5,8 @@ import java.net.URI;
 import com.google.gson.Gson;
 
 import de.swa.gmaf.GMAF;
-import de.swa.gmaf.api.jobs.ProcessingJob;
-import de.swa.gmaf.api.jobs.ProcessingJobs;
+import de.swa.gmaf.jobs.ProcessingJob;
+import de.swa.gmaf.jobs.ProcessingJobs;
 
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
